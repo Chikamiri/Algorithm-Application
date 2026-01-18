@@ -5,6 +5,8 @@ from model.generators.recursive_backtracker import RecursiveBacktracker
 from model.solvers.bfs import BFS
 from model.solvers.dfs import DFS
 from model.solvers.astar import AStar
+from model.solvers.dijkstra import Dijkstra
+from model.solvers.wall_follower import WallFollower
 
 class BenchmarkService:
     def __init__(self):
@@ -33,7 +35,9 @@ class BenchmarkService:
         solvers = {
             "BFS": BFS(),
             "DFS": DFS(),
-            "AStar": AStar()
+            "AStar": AStar(),
+            "Dijkstra": Dijkstra(),
+            "WallFollower": WallFollower()
         }
         generator = RecursiveBacktracker()
         
@@ -96,10 +100,13 @@ class BenchmarkService:
 
     def get_averages(self):
         stats = {}
-        for name, metrics in self.results.items():
-            if not metrics['time']:
+        # Sorted order for consistent display
+        order = ["BFS", "DFS", "AStar", "Dijkstra", "WallFollower"]
+        for name in order:
+            if name not in self.results or not self.results[name]['time']:
                 continue
             
+            metrics = self.results[name]
             times = metrics['time']
             visited = metrics['visited']
             paths = metrics['path']
@@ -119,3 +126,4 @@ class BenchmarkService:
                 'efficiency': (sum(visited) / sum(times)) if sum(times) > 0 else 0
             }
         return stats
+

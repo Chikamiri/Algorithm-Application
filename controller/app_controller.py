@@ -5,6 +5,8 @@ from model.generators.prims import PrimsAlgorithm
 from model.solvers.bfs import BFS
 from model.solvers.dfs import DFS
 from model.solvers.astar import AStar
+from model.solvers.dijkstra import Dijkstra
+from model.solvers.wall_follower import WallFollower
 from model.benchmark_service import BenchmarkService
 from view.renderer import Renderer
 
@@ -37,7 +39,9 @@ class AppController:
         self.solvers = {
             pygame.K_3: BFS(),
             pygame.K_4: DFS(),
-            pygame.K_5: AStar()
+            pygame.K_5: AStar(),
+            pygame.K_6: Dijkstra(),
+            pygame.K_7: WallFollower()
         }
         
         self.current_algo_gen = None
@@ -107,7 +111,7 @@ class AppController:
                 
                 total_cells = self.rows * self.cols
                 
-                is_solver = self.current_algo_name in ["BFS", "DFS", "AStar"]
+                is_solver = self.current_algo_name in ["BFS", "DFS", "AStar", "Dijkstra", "WallFollower"]
                 
                 if is_solver:
                     visited_count = sum(1 for col in self.grid.cells for cell in col if cell.visited_by_solver)

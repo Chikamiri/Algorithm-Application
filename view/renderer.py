@@ -225,6 +225,8 @@ class Renderer:
                 "3: BFS (Shortest)",
                 "4: DFS",
                 "5: A* (Heuristic)",
+                "6: Dijkstra",
+                "7: Wall Follower",
             ])
         ]
         
@@ -325,7 +327,13 @@ class Renderer:
         y_start = 100
         
         algos = list(stats.keys())
-        colors = [self.COLOR_FRONTIER, self.COLOR_EXIT, self.COLOR_PATH]
+        colors = [
+            self.COLOR_FRONTIER, 
+            self.COLOR_EXIT, 
+            self.COLOR_PATH, 
+            self.COLOR_CURRENT, 
+            self.COLOR_ENTRY
+        ]
         
         # 1. Time Chart
         times = [stats[a]['time_avg'] for a in algos]

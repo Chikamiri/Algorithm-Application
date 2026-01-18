@@ -1,45 +1,62 @@
 import matplotlib.pyplot as plt
 import csv
 from collections import defaultdict
+import numpy as np
 
 def analyze():
-    data = defaultdict(lambda: defaultdict(list))
+    # Structure: data[algorithm][size]['time_ms'] = [list of values]
+    data = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
     
     try:
         with open("results.csv", "r") as f:
             reader = csv.DictReader(f)
             for row in reader:
                 algo = row["algorithm"]
-                data[algo]["time_ms"].append(float(row["time_ms"]))
-                data[algo]["path_len"].append(float(row["path_len"]))
-                data[algo]["visited_count"].append(float(row["visited_count"]))
+                size = int(row["size"])
+                data[algo][size]["time_ms"].append(float(row["time_ms"]))
+                data[algo][size]["path_len"].append(float(row["path_len"]))
+                data[algo][size]["visited_count"].append(float(row["visited_count"]))
     except FileNotFoundError:
         print("results.csv not found. Run benchmark_runner.py first.")
         return
 
-    algos = list(data.keys())
-    avg_time = [sum(data[a]["time_ms"]) / len(data[a]["time_ms"]) for a in algos]
-    avg_visited = [sum(data[a]["visited_count"]) / len(data[a]["visited_count"]) for a in algos]
-    avg_path = [sum(data[a]["path_len"]) / len(data[a]["path_len"]) for a in algos]
+    algos = sorted(list(data.keys()))
+    sizes = sorted(list(data[algos[0]].keys()))
 
-    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 6))
 
-    ax1.bar(algos, avg_time, color=['blue', 'green', 'orange'])
-    ax1.set_title("Average Execution Time (ms)")
-    ax1.set_ylabel("Time (ms)")
+    colors = plt.cm.tab10(np.linspace(0, 1, len(algos)))
 
-    ax2.bar(algos, avg_visited, color=['blue', 'green', 'orange'])
-    ax2.set_title("Average Nodes Visited")
-    ax2.set_ylabel("Count")
+    for i, algo in enumerate(algos):
+        avg_times = [np.mean(data[algo][s]["time_ms"]) for s in sizes]
+        avg_visited = [np.mean(data[algo][s]["visited_count"]) for s in sizes]
+        avg_paths = [np.mean(data[algo][s]["path_len"]) for s in sizes]
 
-    ax3.bar(algos, avg_path, color=['blue', 'green', 'orange'])
-    ax3.set_title("Average Path Length")
-    ax3.set_ylabel("Steps")
+        ax1.plot(sizes, avg_times, marker='o', label=algo, color=colors[i])
+        ax2.plot(sizes, avg_visited, marker='o', label=algo, color=colors[i])
+        ax3.plot(sizes, avg_paths, marker='o', label=algo, color=colors[i])
+
+    ax1.set_title("Execution Time vs Grid Size")
+    ax1.set_xlabel("Grid Size (NxN)")
+    ax1.set_ylabel("Average Time (ms)")
+    ax1.legend()
+    ax1.grid(True, linestyle='--', alpha=0.7)
+
+    ax2.set_title("Nodes Visited vs Grid Size")
+    ax2.set_xlabel("Grid Size (NxN)")
+    ax2.set_ylabel("Average Nodes Visited")
+    ax2.legend()
+    ax2.grid(True, linestyle='--', alpha=0.7)
+
+    ax3.set_title("Path Length vs Grid Size")
+    ax3.set_xlabel("Grid Size (NxN)")
+    ax3.set_ylabel("Average Path Length")
+    ax3.legend()
+    ax3.grid(True, linestyle='--', alpha=0.7)
 
     plt.tight_layout()
     plt.savefig("benchmark_analysis.png")
-    print("Analysis complete. Plot saved as benchmark_analysis.png")
-    # plt.show() # Can't show in CLI easily
+    print("Scalability Analysis complete. Plot saved as benchmark_analysis.png")
 
 if __name__ == "__main__":
     analyze()
