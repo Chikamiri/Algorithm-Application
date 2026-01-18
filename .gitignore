@@ -3,3 +3,5 @@
 /checklist.md
 /plan.md
 /results.csv
+/__pycache__/
+*.pyc

@@ -163,7 +163,7 @@ class Renderer:
         
         # --- Live Statistics Panel ---
         # Draw a background box for stats to make it distinct
-        stats_h = 160 # Increased height for time
+        stats_h = 200 # Increased height for even more stats
         stats_w = self.SIDEBAR_WIDTH - 40
         stats_rect = pygame.Rect(x_start, y_start, stats_w, stats_h)
         pygame.draw.rect(self.screen, (35, 39, 46), stats_rect, border_radius=8)
@@ -176,9 +176,13 @@ class Renderer:
         frontier_txt = f"{stats['frontier']}" if stats else "0"
         path_txt = f"{stats['path']}" if stats else "0"
         time_txt = f"{stats['time']:.2f}s" if stats and 'time' in stats else "0.00s"
+        comp_txt = f"{stats['comp_time']:.2f}ms" if stats and 'comp_time' in stats else "0.00ms"
+        steps_txt = f"{stats['steps']}" if stats and 'steps' in stats else "0"
         
         stat_lines = [
-            f"Time Elapsed:  {time_txt}",
+            f"Visual Time:   {time_txt}",
+            f"Execution Time: {comp_txt}",
+            f"Total Steps:   {steps_txt}",
             f"Nodes Visited: {visited_txt}",
             f"Total Cells:   {total_txt}",
             f"Coverage:      {coverage_txt}",
@@ -268,7 +272,7 @@ class Renderer:
         msg_rect = msg_surf.get_rect(center=(center_x, center_y + 50))
         self.screen.blit(msg_surf, msg_rect)
 
-    def draw_benchmark_results(self, averages):
+    def draw_benchmark_results(self, stats, iterations=5):
         self.screen.fill(self.COLOR_BG)
         
         # Draw Sidebar Background
@@ -281,8 +285,13 @@ class Renderer:
         self.screen.blit(self.font_large.render("Benchmark Results", True, self.COLOR_PATH), (info_x, 20))
         self.screen.blit(self.font.render("Press B to return", True, self.COLOR_TEXT), (info_x, 60))
         self.screen.blit(self.font.render("Press ENTER to rerun", True, self.COLOR_TEXT), (info_x, 90))
+        
+        # Iteration Control
+        iter_y = 130
+        self.screen.blit(self.font.render(f"Target Iterations: {iterations}", True, self.COLOR_FRONTIER), (info_x, iter_y))
+        self.screen.blit(self.font.render("(UP/DOWN +/- 1, SHIFT +/- 5)", True, (150, 150, 150)), (info_x, iter_y + 20))
 
-        if not averages:
+        if not stats:
             # Draw "No Results" message in center
             area_w = self.screen.get_width() - self.SIDEBAR_WIDTH
             msg = self.font_large.render("No results available. Press ENTER to start.", True, self.COLOR_TEXT)
@@ -290,26 +299,44 @@ class Renderer:
             self.screen.blit(msg, msg_rect)
             return
 
+        # Detailed Stats Table in Sidebar
+        ty = 180
+        for name, data in stats.items():
+            head = self.font.render(f"--- {name} ---", True, self.COLOR_FRONTIER)
+            self.screen.blit(head, (info_x, ty))
+            ty += 22
+            
+            detail_lines = [
+                f"Time: {data['time_min']:.1f} - {data['time_max']:.1f} ms",
+                f"Efficiency: {data['efficiency']:.1f} nodes/ms",
+                f"Visited Range: {data['visited_min']} - {data['visited_max']}",
+            ]
+            for line in detail_lines:
+                txt = self.font.render(line, True, self.COLOR_TEXT)
+                self.screen.blit(txt, (info_x + 10, ty))
+                ty += 18
+            ty += 10
+
         # Draw Charts
         area_w = self.screen.get_width() - self.SIDEBAR_WIDTH
         padding = 40
         chart_w = (area_w - padding * 3) // 3
-        chart_h = self.screen.get_height() - 150
+        chart_h = self.screen.get_height() - 200
         y_start = 100
         
-        algos = list(averages.keys())
+        algos = list(stats.keys())
         colors = [self.COLOR_FRONTIER, self.COLOR_EXIT, self.COLOR_PATH]
         
         # 1. Time Chart
-        times = [averages[a]['time'] for a in algos]
+        times = [stats[a]['time_avg'] for a in algos]
         self.draw_bar_chart(padding, y_start, chart_w, chart_h, algos, times, "Avg Time (ms)", colors)
         
         # 2. Visited Chart
-        visited = [averages[a]['visited'] for a in algos]
+        visited = [stats[a]['visited_avg'] for a in algos]
         self.draw_bar_chart(padding * 2 + chart_w, y_start, chart_w, chart_h, algos, visited, "Avg Nodes Visited", colors)
         
         # 3. Path Len Chart
-        paths = [averages[a]['path'] for a in algos]
+        paths = [stats[a]['path_avg'] for a in algos]
         self.draw_bar_chart(padding * 3 + chart_w * 2, y_start, chart_w, chart_h, algos, paths, "Avg Path Length", colors)
 
     def draw_bar_chart(self, x, y, w, h, labels, values, title, colors):
@@ -323,6 +350,15 @@ class Renderer:
         
         if not values: return
         max_val = max(values) if max(values) > 0 else 1
+        
+        # Grid lines (5 lines)
+        for i in range(1, 6):
+            gy = y + h - (i * h / 5)
+            pygame.draw.line(self.screen, (60, 60, 60), (x, gy), (x + w, gy), 1)
+            # Label
+            val = (max_val / 5) * i
+            lbl = self.font.render(f"{val:.0f}", True, (100, 100, 100))
+            self.screen.blit(lbl, (x - lbl.get_width() - 5, gy - 10))
         
         bar_width = w // len(values) - 10
         

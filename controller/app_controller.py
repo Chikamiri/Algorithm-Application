@@ -45,10 +45,13 @@ class AppController:
         self.running = True
         self.paused = False
         self.elapsed_time = 0.0
+        self.total_steps = 0
+        self.computation_time = 0.0 # CPU Time in ms
         
         # Benchmark State
         self.benchmark_service = BenchmarkService()
         self.state = "NORMAL" # NORMAL, BENCHMARKING, BENCHMARK_RESULTS
+        self.benchmark_iterations = 5
         
         self.update_grid_endpoints()
 
@@ -68,8 +71,11 @@ class AppController:
         self.current_algo_gen = None
         self.current_algo_name = "None"
         self.elapsed_time = 0.0
+        self.total_steps = 0
+        self.computation_time = 0.0
 
     def run(self):
+        import time # Ensure time is available
         while self.running:
             # Time delta in seconds
             dt = self.clock.tick(self.target_fps) / 1000.0
@@ -80,8 +86,13 @@ class AppController:
                 if not self.paused and self.current_algo_gen:
                     self.elapsed_time += dt
                     try:
+                        # Measure CPU Time for the steps taken in this frame
+                        start_comp = time.perf_counter_ns()
                         for _ in range(self.steps_per_frame):
                             next(self.current_algo_gen)
+                            self.total_steps += 1
+                        end_comp = time.perf_counter_ns()
+                        self.computation_time += (end_comp - start_comp) / 1_000_000 # to ms
                     except StopIteration:
                         self.current_algo_gen = None
                 
@@ -114,7 +125,9 @@ class AppController:
                     "total": total_cells,
                     "coverage": coverage,
                     "frontier": frontier_count,
-                    "time": self.elapsed_time
+                    "time": self.elapsed_time,
+                    "comp_time": self.computation_time,
+                    "steps": self.total_steps
                 }
 
                 speed_info = f"{self.steps_per_frame} steps/frame"
@@ -135,7 +148,7 @@ class AppController:
                     self.renderer.draw_benchmark_progress(self.benchmark_service.progress, self.benchmark_service.status_message)
 
             elif self.state == "BENCHMARK_RESULTS":
-                self.renderer.draw_benchmark_results(self.benchmark_service.get_averages())
+                self.renderer.draw_benchmark_results(self.benchmark_service.get_averages(), self.benchmark_iterations)
 
             pygame.display.flip()
             
@@ -205,11 +218,21 @@ class AppController:
                     elif event.key in self.solvers:
                         self.grid.reset_visited()
                         self.elapsed_time = 0.0 # Reset time for solver
+                        self.total_steps = 0
+                        self.computation_time = 0.0
                         algo = self.solvers[event.key]
                         self.current_algo_name = algo.__class__.__name__
                         self.current_algo_gen = algo.solve(self.grid, self.start_cell, self.end_cell)
 
                 elif self.state == "BENCHMARK_RESULTS":
+                    mods = pygame.key.get_mods()
+                    is_shift = mods & pygame.KMOD_SHIFT
+                    step = 5 if is_shift else 1
+                    
                     if event.key == pygame.K_RETURN:
                         self.state = "BENCHMARKING"
-                        self.benchmark_service.start_benchmark(self.rows, self.cols)
+                        self.benchmark_service.start_benchmark(self.rows, self.cols, self.benchmark_iterations)
+                    elif event.key == pygame.K_UP:
+                        self.benchmark_iterations = min(100, self.benchmark_iterations + step)
+                    elif event.key == pygame.K_DOWN:
+                        self.benchmark_iterations = max(1, self.benchmark_iterations - step)

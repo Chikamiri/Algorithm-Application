@@ -95,13 +95,27 @@ class BenchmarkService:
             self.is_running = False
 
     def get_averages(self):
-        avgs = {}
+        stats = {}
         for name, metrics in self.results.items():
             if not metrics['time']:
                 continue
-            avgs[name] = {
-                'time': sum(metrics['time']) / len(metrics['time']),
-                'visited': sum(metrics['visited']) / len(metrics['visited']),
-                'path': sum(metrics['path']) / len(metrics['path'])
+            
+            times = metrics['time']
+            visited = metrics['visited']
+            paths = metrics['path']
+            
+            stats[name] = {
+                'time_avg': sum(times) / len(times),
+                'time_min': min(times),
+                'time_max': max(times),
+                
+                'visited_avg': sum(visited) / len(visited),
+                'visited_min': min(visited),
+                'visited_max': max(visited),
+                
+                'path_avg': sum(paths) / len(paths),
+                
+                # Efficiency: Average Nodes per Millisecond
+                'efficiency': (sum(visited) / sum(times)) if sum(times) > 0 else 0
             }
-        return avgs
+        return stats
