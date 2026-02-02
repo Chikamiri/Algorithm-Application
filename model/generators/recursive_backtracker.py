@@ -4,7 +4,7 @@ from ..interfaces import IGenerator
 from ..grid import Grid
 
 class RecursiveBacktracker(IGenerator):
-    def generate(self, grid: Grid) -> Generator[None, None, None]:
+    def generate(self, grid: Grid, visualize: bool = True) -> Generator[None, None, None]:
         # Start at the top-left cell (0,0)
         current = grid.get_cell(0, 0)
         if not current:
@@ -15,7 +15,8 @@ class RecursiveBacktracker(IGenerator):
         
         while stack:
             current = stack[-1]
-            grid.current = current # For visualization
+            if visualize:
+                grid.current = current # For visualization
             
             # Step 1: Get unvisited neighbors
             neighbors = grid.get_unvisited_neighbors(current)
@@ -32,10 +33,13 @@ class RecursiveBacktracker(IGenerator):
                 stack.append(neighbor)
                 
                 # Yield to let the view update
-                yield
+                if visualize:
+                    yield
             else:
                 # Backtrack
                 stack.pop()
-                yield
+                if visualize:
+                    yield
         
-        grid.current = None # Reset pointer when done
+        if visualize:
+            grid.current = None # Reset pointer when done
