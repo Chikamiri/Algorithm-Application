@@ -311,6 +311,7 @@ class Renderer:
             detail_lines = [
                 f"Time: {data['time_min']:.1f} - {data['time_max']:.1f} ms",
                 f"Efficiency: {data['efficiency']:.1f} nodes/ms",
+                f"Peak Frontier: {data['frontier_max']}",
                 f"Visited Range: {data['visited_min']} - {data['visited_max']}",
             ]
             for line in detail_lines:

@@ -12,7 +12,7 @@ class BenchmarkService:
     def __init__(self):
         self.is_running = False
         self.progress = 0.0
-        self.results = {} # {algo_name: {'time': [], 'visited': [], 'path': []}}
+        self.results = {} # {algo_name: {'time': [], 'visited': [], 'path': [], 'frontier': []}}
         self.thread = None
         self.status_message = "Ready"
         self.error = None
@@ -43,7 +43,7 @@ class BenchmarkService:
         
         # Initialize results storage
         for name in solvers:
-            self.results[name] = {'time': [], 'visited': [], 'path': []}
+            self.results[name] = {'time': [], 'visited': [], 'path': [], 'frontier': []}
 
         total_steps = iterations * len(solvers)
         step_count = 0
@@ -51,7 +51,6 @@ class BenchmarkService:
         try:
             for i in range(iterations):
                 self.status_message = f"Generating Maze {i+1}/{iterations}..."
-                # Generate
                 grid = Grid(rows, cols)
                 gen = generator.generate(grid)
                 for _ in gen: pass
@@ -66,25 +65,21 @@ class BenchmarkService:
                     # Timing
                     start_time = time.perf_counter_ns()
                     
-                    solve_gen = solver.solve(grid, start_cell, end_cell)
-                    path = []
+                    solve_gen = solver.solve(grid, start_cell, end_cell, visualize=False)
                     try:
                         while True:
                             next(solve_gen)
                     except StopIteration as e:
-                        path = e.value
+                        res = e.value
                     
                     end_time = time.perf_counter_ns()
                     duration_ms = (end_time - start_time) / 1_000_000
                     
-                    # Metrics
-                    path_len = len(path) if path else 0
-                    visited_count = sum(1 for col in grid.cells for cell in col if cell.visited_by_solver)
-                    
                     # Store
                     self.results[name]['time'].append(duration_ms)
-                    self.results[name]['visited'].append(visited_count)
-                    self.results[name]['path'].append(path_len)
+                    self.results[name]['visited'].append(res['visited_count'])
+                    self.results[name]['path'].append(len(res['path']))
+                    self.results[name]['frontier'].append(res['peak_frontier'])
                     
                     step_count += 1
                     self.progress = step_count / total_steps
@@ -100,7 +95,6 @@ class BenchmarkService:
 
     def get_averages(self):
         stats = {}
-        # Sorted order for consistent display
         order = ["BFS", "DFS", "AStar", "Dijkstra", "WallFollower"]
         for name in order:
             if name not in self.results or not self.results[name]['time']:
@@ -110,6 +104,7 @@ class BenchmarkService:
             times = metrics['time']
             visited = metrics['visited']
             paths = metrics['path']
+            frontier = metrics['frontier']
             
             stats[name] = {
                 'time_avg': sum(times) / len(times),
@@ -121,8 +116,9 @@ class BenchmarkService:
                 'visited_max': max(visited),
                 
                 'path_avg': sum(paths) / len(paths),
+                'frontier_avg': sum(frontier) / len(frontier),
+                'frontier_max': max(frontier),
                 
-                # Efficiency: Average Nodes per Millisecond
                 'efficiency': (sum(visited) / sum(times)) if sum(times) > 0 else 0
             }
         return stats

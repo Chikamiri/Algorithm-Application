@@ -9,20 +9,27 @@ class AStar(ISolver):
         """Manhattan distance heuristic."""
         return abs(a.x - b.x) + abs(a.y - b.y)
 
-    def solve(self, grid: Grid, start_cell: Cell, end_cell: Cell) -> Generator[None, None, List[Cell]]:
+    def solve(self, grid: Grid, start_cell: Cell, end_cell: Cell, visualize: bool = True) -> Generator[int, None, dict]:
         # Priority queue stores (priority, count, cell)
-        # count is used to break ties and ensure stable behavior
         count = 0
         frontier = [(0, count, start_cell)]
         came_from = {start_cell: None}
         g_score = {start_cell: 0}
         
-        start_cell.in_frontier = True
+        visited_count = 0
+        max_frontier = 1
+        
+        if visualize:
+            start_cell.in_frontier = True
         
         while frontier:
+            max_frontier = max(max_frontier, len(frontier))
             _, _, current = heapq.heappop(frontier)
-            current.in_frontier = False
-            current.visited_by_solver = True
+            visited_count += 1
+            
+            if visualize:
+                current.in_frontier = False
+                current.visited_by_solver = True
             
             if current == end_cell:
                 break
@@ -36,9 +43,11 @@ class AStar(ISolver):
                     count += 1
                     heapq.heappush(frontier, (priority, count, neighbor))
                     came_from[neighbor] = current
-                    neighbor.in_frontier = True
+                    if visualize:
+                        neighbor.in_frontier = True
             
-            yield # Update visualization
+            if visualize:
+                yield len(frontier)
             
         # Reconstruct path
         path = []
@@ -46,8 +55,13 @@ class AStar(ISolver):
             temp = end_cell
             while temp:
                 path.append(temp)
-                temp.is_path = True
+                if visualize:
+                    temp.is_path = True
                 temp = came_from[temp]
             path.reverse()
             
-        return path
+        return {
+            "path": path,
+            "visited_count": visited_count,
+            "peak_frontier": max_frontier
+        }

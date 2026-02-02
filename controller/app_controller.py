@@ -97,8 +97,12 @@ class AppController:
                             self.total_steps += 1
                         end_comp = time.perf_counter_ns()
                         self.computation_time += (end_comp - start_comp) / 1_000_000 # to ms
-                    except StopIteration:
+                    except StopIteration as e:
+                        # Extract final path and metrics if available
                         self.current_algo_gen = None
+                        if isinstance(e.value, dict):
+                            # We could update final stats here if needed
+                            pass
                 
                 self.renderer.draw_grid(self.grid)
                 if self.grid.current:

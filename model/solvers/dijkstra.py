@@ -10,22 +10,29 @@ class Dijkstra(ISolver):
     In an unweighted grid, this behaves like BFS but uses a priority queue.
     Useful for comparison with A*.
     """
-    def solve(self, grid: Grid, start_cell: Cell, end_cell: Cell) -> Generator[None, None, List[Cell]]:
+    def solve(self, grid: Grid, start_cell: Cell, end_cell: Cell, visualize: bool = True) -> Generator[int, None, dict]:
         # Priority Queue: (distance, (x, y))
         pq = [(0, (start_cell.x, start_cell.y))]
         distances = {(start_cell.x, start_cell.y): 0}
         came_from = {start_cell: None}
         
-        start_cell.visited_by_solver = True
-        start_cell.in_frontier = True
+        visited_count = 0
+        max_frontier = 1
+        
+        if visualize:
+            start_cell.in_frontier = True
         
         while pq:
+            max_frontier = max(max_frontier, len(pq))
             dist, (curr_x, curr_y) = heapq.heappop(pq)
             current = grid.get_cell(curr_x, curr_y)
             
             if not current: continue
             
-            current.in_frontier = False
+            visited_count += 1
+            if visualize:
+                current.in_frontier = False
+                current.visited_by_solver = True
             
             if current == end_cell:
                 break
@@ -37,11 +44,12 @@ class Dijkstra(ISolver):
                 if neighbor_coords not in distances or new_dist < distances[neighbor_coords]:
                     distances[neighbor_coords] = new_dist
                     came_from[neighbor] = current
-                    neighbor.visited_by_solver = True
-                    neighbor.in_frontier = True
+                    if visualize:
+                        neighbor.in_frontier = True
                     heapq.heappush(pq, (new_dist, neighbor_coords))
             
-            yield # Update visualization
+            if visualize:
+                yield len(pq)
             
         # Reconstruct path
         path = []
@@ -49,8 +57,13 @@ class Dijkstra(ISolver):
             temp = end_cell
             while temp:
                 path.append(temp)
-                temp.is_path = True
+                if visualize:
+                    temp.is_path = True
                 temp = came_from[temp]
             path.reverse()
         
-        return path
+        return {
+            "path": path,
+            "visited_count": visited_count,
+            "peak_frontier": max_frontier
+        }
