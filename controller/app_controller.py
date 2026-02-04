@@ -135,7 +135,8 @@ class AppController:
                     "frontier": frontier_count,
                     "time": self.elapsed_time,
                     "comp_time": self.computation_time,
-                    "steps": self.total_steps
+                    "steps": self.total_steps,
+                    "memory": self.process.memory_info().rss / 1024 # KB
                 }
 
                 speed_info = f"{self.steps_per_frame} steps/frame"
@@ -148,12 +149,12 @@ class AppController:
                 if not self.benchmark_service.is_running:
                     if self.benchmark_service.error:
                         # Stay in this state to show error
-                        self.renderer.draw_benchmark_progress(self.benchmark_service.progress, self.benchmark_service.status_message)
+                        self.renderer.draw_benchmark_progress(self.benchmark_service.progress, self.benchmark_service.status_message, self.benchmark_service.current_memory)
                     elif self.benchmark_service.progress > 0:
                         # Success
                         self.state = "BENCHMARK_RESULTS"
                 else:
-                    self.renderer.draw_benchmark_progress(self.benchmark_service.progress, self.benchmark_service.status_message)
+                    self.renderer.draw_benchmark_progress(self.benchmark_service.progress, self.benchmark_service.status_message, self.benchmark_service.current_memory)
 
             elif self.state == "BENCHMARK_RESULTS":
                 self.renderer.draw_benchmark_results(self.benchmark_service.get_averages(), self.benchmark_iterations)

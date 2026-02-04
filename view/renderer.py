@@ -178,16 +178,18 @@ class Renderer:
         time_txt = f"{stats['time']:.2f}s" if stats and 'time' in stats else "0.00s"
         comp_txt = f"{stats['comp_time']:.2f}ms" if stats and 'comp_time' in stats else "0.00ms"
         steps_txt = f"{stats['steps']}" if stats and 'steps' in stats else "0"
+        ram_txt = f"{stats['memory']:.1f} KB" if stats and 'memory' in stats else "0.0 KB"
         
         stat_lines = [
-            f"Visual Time:   {time_txt}",
+            f"Visual Time:    {time_txt}",
             f"Execution Time: {comp_txt}",
-            f"Total Steps:   {steps_txt}",
-            f"Nodes Visited: {visited_txt}",
-            f"Total Cells:   {total_txt}",
-            f"Coverage:      {coverage_txt}",
-            f"Frontier Size: {frontier_txt}",
-            f"Path Length:   {path_txt}"
+            f"Total Steps:    {steps_txt}",
+            f"RAM Usage:      {ram_txt}",
+            f"Nodes Visited:  {visited_txt}",
+            f"Total Cells:    {total_txt}",
+            f"Coverage:       {coverage_txt}",
+            f"Frontier Size:  {frontier_txt}",
+            f"Path Length:    {path_txt}"
         ]
         
         sy = y_start + 15 # Adjusted padding
@@ -244,10 +246,10 @@ class Renderer:
             
             y_start += 15 # Group spacing
 
-    def draw_benchmark_progress(self, progress, message):
+    def draw_benchmark_progress(self, progress, message, current_ram=0.0):
         self.screen.fill(self.COLOR_BG)
         
-        # Draw Sidebar Background (keep consistent look)
+        # ... (keep sidebar logic) ...
         sidebar_rect = pygame.Rect(self.screen.get_width() - self.SIDEBAR_WIDTH, 0, self.SIDEBAR_WIDTH, self.screen.get_height())
         pygame.draw.rect(self.screen, self.COLOR_SIDEBAR_BG, sidebar_rect)
         pygame.draw.line(self.screen, self.COLOR_WALL, (sidebar_rect.x, 0), (sidebar_rect.x, self.screen.get_height()), 2)
@@ -259,19 +261,24 @@ class Renderer:
         
         # Title
         title = self.font_large.render("Running Benchmarks...", True, self.COLOR_PATH)
-        title_rect = title.get_rect(center=(center_x, center_y - 50))
+        title_rect = title.get_rect(center=(center_x, center_y - 80))
         self.screen.blit(title, title_rect)
         
+        # RAM Usage Real-time
+        ram_text = self.font_large.render(f"Live RAM: {current_ram:.1f} KB", True, self.COLOR_FRONTIER)
+        ram_rect = ram_text.get_rect(center=(center_x, center_y - 30))
+        self.screen.blit(ram_text, ram_rect)
+
         # Progress Bar
         bar_w = 400
         bar_h = 30
-        pygame.draw.rect(self.screen, self.COLOR_VISITED_GEN, (center_x - bar_w // 2, center_y, bar_w, bar_h))
-        pygame.draw.rect(self.screen, self.COLOR_ENTRY, (center_x - bar_w // 2, center_y, int(bar_w * progress), bar_h))
-        pygame.draw.rect(self.screen, self.COLOR_WALL, (center_x - bar_w // 2, center_y, bar_w, bar_h), 2)
+        pygame.draw.rect(self.screen, self.COLOR_VISITED_GEN, (center_x - bar_w // 2, center_y + 20, bar_w, bar_h))
+        pygame.draw.rect(self.screen, self.COLOR_ENTRY, (center_x - bar_w // 2, center_y + 20, int(bar_w * progress), bar_h))
+        pygame.draw.rect(self.screen, self.COLOR_WALL, (center_x - bar_w // 2, center_y + 20, bar_w, bar_h), 2)
         
         # Message
         msg_surf = self.font.render(message, True, self.COLOR_TEXT)
-        msg_rect = msg_surf.get_rect(center=(center_x, center_y + 50))
+        msg_rect = msg_surf.get_rect(center=(center_x, center_y + 70))
         self.screen.blit(msg_surf, msg_rect)
 
     def draw_benchmark_results(self, stats, iterations=5):
@@ -310,6 +317,7 @@ class Renderer:
             
             detail_lines = [
                 f"Time: {data['time_min']:.1f} - {data['time_max']:.1f} ms",
+                f"RAM: {data['memory_avg']:.1f} KB (Peak: {data['memory_max']:.1f})",
                 f"Efficiency: {data['efficiency']:.1f} nodes/ms",
                 f"Peak Frontier: {data['frontier_max']}",
                 f"Visited Range: {data['visited_min']} - {data['visited_max']}",
@@ -342,11 +350,15 @@ class Renderer:
         
         # 2. Visited Chart
         visited = [stats[a]['visited_avg'] for a in algos]
-        self.draw_bar_chart(padding * 2 + chart_w, y_start, chart_w, chart_h, algos, visited, "Avg Nodes Visited", colors)
+        self.draw_bar_chart(padding * 2 + chart_w, y_start, chart_w, chart_h, algos, visited, "Avg Visited", colors)
         
         # 3. Path Len Chart
         paths = [stats[a]['path_avg'] for a in algos]
-        self.draw_bar_chart(padding * 3 + chart_w * 2, y_start, chart_w, chart_h, algos, paths, "Avg Path Length", colors)
+        self.draw_bar_chart(padding * 3 + chart_w * 2, y_start, chart_w, chart_h, algos, paths, "Avg Path", colors)
+
+        # 4. Memory Chart
+        mems = [stats[a]['memory_avg'] for a in algos]
+        self.draw_bar_chart(padding * 4 + chart_w * 3, y_start, chart_w, chart_h, algos, mems, "Avg RAM (KB)", colors)
 
     def draw_bar_chart(self, x, y, w, h, labels, values, title, colors):
         # Title

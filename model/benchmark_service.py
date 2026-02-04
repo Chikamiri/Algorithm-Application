@@ -1,5 +1,7 @@
 import time
 import threading
+import os
+import psutil
 from model.grid import Grid
 from model.generators.recursive_backtracker import RecursiveBacktracker
 from model.solvers.bfs import BFS
@@ -12,6 +14,7 @@ class BenchmarkService:
     def __init__(self):
         self.is_running = False
         self.progress = 0.0
+        self.current_memory = 0.0
         self.results = {} # {algo_name: {'time': [], 'visited': [], 'path': [], 'frontier': []}}
         self.thread = None
         self.status_message = "Ready"
@@ -43,10 +46,11 @@ class BenchmarkService:
         
         # Initialize results storage
         for name in solvers:
-            self.results[name] = {'time': [], 'visited': [], 'path': [], 'frontier': []}
+            self.results[name] = {'time': [], 'visited': [], 'path': [], 'frontier': [], 'memory': []}
 
         total_steps = iterations * len(solvers)
         step_count = 0
+        process = psutil.Process(os.getpid())
 
         try:
             for i in range(iterations):
@@ -75,11 +79,16 @@ class BenchmarkService:
                     end_time = time.perf_counter_ns()
                     duration_ms = (end_time - start_time) / 1_000_000
                     
+                    # Memory (RSS in KB)
+                    mem_kb = process.memory_info().rss / 1024
+                    self.current_memory = mem_kb
+                    
                     # Store
                     self.results[name]['time'].append(duration_ms)
                     self.results[name]['visited'].append(res['visited_count'])
                     self.results[name]['path'].append(len(res['path']))
                     self.results[name]['frontier'].append(res['peak_frontier'])
+                    self.results[name]['memory'].append(mem_kb)
                     
                     step_count += 1
                     self.progress = step_count / total_steps
@@ -105,6 +114,7 @@ class BenchmarkService:
             visited = metrics['visited']
             paths = metrics['path']
             frontier = metrics['frontier']
+            memory = metrics['memory']
             
             stats[name] = {
                 'time_avg': sum(times) / len(times),
@@ -118,6 +128,9 @@ class BenchmarkService:
                 'path_avg': sum(paths) / len(paths),
                 'frontier_avg': sum(frontier) / len(frontier),
                 'frontier_max': max(frontier),
+                
+                'memory_avg': sum(memory) / len(memory),
+                'memory_max': max(memory),
                 
                 'efficiency': (sum(visited) / sum(times)) if sum(times) > 0 else 0
             }
