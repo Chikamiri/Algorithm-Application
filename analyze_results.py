@@ -18,6 +18,7 @@ def analyze():
                 data[gen][algo][size]["path_len"].append(float(row["path_len"]))
                 data[gen][algo][size]["visited_count"].append(float(row["visited_count"]))
                 data[gen][algo][size]["peak_frontier"].append(float(row.get("peak_frontier", 0)))
+                data[gen][algo][size]["memory_kb"].append(float(row.get("memory_kb", 0)))
     except FileNotFoundError:
         print("results.csv not found. Run benchmark_runner.py first.")
         return
@@ -28,11 +29,13 @@ def analyze():
         algos = sorted(list(data[gen].keys()))
         sizes = sorted(list(data[gen][algos[0]].keys()))
 
-        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+        fig, axes = plt.subplots(3, 2, figsize=(16, 18))
         fig.suptitle(f"Scalability Analysis: {gen} Maze", fontsize=16)
         
         ax_time, ax_visited = axes[0]
         ax_path, ax_frontier = axes[1]
+        ax_memory = axes[2][0]
+        axes[2][1].axis('off') # Hide empty subplot
 
         colors = plt.cm.tab10(np.linspace(0, 1, len(algos)))
 
@@ -41,11 +44,13 @@ def analyze():
             avg_visited = [np.mean(data[gen][algo][s]["visited_count"]) for s in sizes]
             avg_paths = [np.mean(data[gen][algo][s]["path_len"]) for s in sizes]
             avg_frontier = [np.mean(data[gen][algo][s]["peak_frontier"]) for s in sizes]
+            avg_memory = [np.mean(data[gen][algo][s]["memory_kb"]) for s in sizes]
 
             ax_time.plot(sizes, avg_times, marker='o', label=algo, color=colors[i])
             ax_visited.plot(sizes, avg_visited, marker='o', label=algo, color=colors[i])
             ax_path.plot(sizes, avg_paths, marker='o', label=algo, color=colors[i])
             ax_frontier.plot(sizes, avg_frontier, marker='o', label=algo, color=colors[i])
+            ax_memory.plot(sizes, avg_memory, marker='o', label=algo, color=colors[i])
 
         ax_time.set_title("Execution Time vs Grid Size")
         ax_time.set_ylabel("Average Time (ms)")
@@ -67,8 +72,14 @@ def analyze():
         ax_frontier.legend()
         ax_frontier.grid(True, linestyle='--', alpha=0.7)
 
+        ax_memory.set_title("Peak Memory Usage vs Grid Size")
+        ax_memory.set_ylabel("RAM Usage (KB)")
+        ax_memory.legend()
+        ax_memory.grid(True, linestyle='--', alpha=0.7)
+
         for ax in axes.flat:
-            ax.set_xlabel("Grid Size (NxN)")
+            if ax.get_visible():
+                ax.set_xlabel("Grid Size (NxN)")
 
         plt.tight_layout(rect=[0, 0.03, 1, 0.95])
         filename = f"benchmark_{gen}.png"
@@ -76,7 +87,5 @@ def analyze():
         print(f"Analysis for {gen} complete. Plot saved as {filename}")
 
 if __name__ == "__main__":
-    analyze()
 
-if __name__ == "__main__":
     analyze()

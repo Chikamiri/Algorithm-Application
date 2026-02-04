@@ -1,5 +1,8 @@
 import time
 import csv
+import sys
+import os
+import psutil
 from model.grid import Grid
 from model.generators.recursive_backtracker import RecursiveBacktracker
 from model.solvers.bfs import BFS
@@ -32,6 +35,7 @@ def run_benchmark(sizes=[10, 20, 30, 40, 50, 75, 100], iterations=20):
     }
     
     results = []
+    process = psutil.Process(os.getpid())
     
     print(f"Starting Scalability Benchmark...")
     
@@ -64,8 +68,8 @@ def run_benchmark(sizes=[10, 20, 30, 40, 50, 75, 100], iterations=20):
                         results_dict = e.value
                     
                     end_time = time.perf_counter_ns()
-                    
                     duration_ms = (end_time - start_time) / 1_000_000
+                    mem_kb = process.memory_info().rss / 1024
                     
                     results.append({
                         "generator": gen_name,
@@ -75,17 +79,32 @@ def run_benchmark(sizes=[10, 20, 30, 40, 50, 75, 100], iterations=20):
                         "time_ms": duration_ms,
                         "path_len": len(results_dict["path"]),
                         "visited_count": results_dict["visited_count"],
-                        "peak_frontier": results_dict["peak_frontier"]
+                        "peak_frontier": results_dict["peak_frontier"],
+                        "memory_kb": mem_kb
                     })
             
     # Save to CSV
     with open("results.csv", "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=["generator", "size", "iteration", "algorithm", "time_ms", "path_len", "visited_count", "peak_frontier"])
+        writer = csv.DictWriter(f, fieldnames=["generator", "size", "iteration", "algorithm", "time_ms", "path_len", "visited_count", "peak_frontier", "memory_kb"])
         writer.writeheader()
         writer.writerows(results)
     
     print("Benchmarking complete. Results saved to results.csv")
 
 if __name__ == "__main__":
-    # For a quick test, use fewer iterations and smaller sizes
-    run_benchmark(sizes=[10, 30, 50, 70, 100], iterations=20)
+
+    # Increased recursion limit for deep mazes
+
+    sys.setrecursionlimit(10**7)
+
+    
+
+    # Testing sizes as requested
+
+    run_benchmark(sizes=[10, 50, 100, 200, 300], iterations=2)
+
+
+
+
+
+
