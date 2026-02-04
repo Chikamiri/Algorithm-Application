@@ -116,4 +116,4 @@ def run_benchmark(sizes=[100, 250, 500, 750, 1000], iterations=50):
 
 if __name__ == "__main__":
     # Testing sizes as requested
-    run_benchmark(sizes=[100, 250, 500, 750, 1000], iterations=25)
+    run_benchmark(sizes=[100, 250, 500, 750, 1000], iterations=5)

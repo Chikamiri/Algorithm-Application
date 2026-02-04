@@ -1,3 +1,5 @@
+import os
+import psutil
 import pygame
 from model.grid import Grid
 from model.generators.recursive_backtracker import RecursiveBacktracker
@@ -15,6 +17,7 @@ class AppController:
         pygame.init()
         self.rows = rows
         self.cols = cols
+        self.process = psutil.Process(os.getpid())
         
         # Fixed Window Size
         self.WINDOW_WIDTH = 1280
