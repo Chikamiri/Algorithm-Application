@@ -60,7 +60,6 @@ class Grid:
         """Resets solver state for all cells."""
         for col in self.cells:
             for cell in col:
-                cell.visited = False
                 cell.visited_by_solver = False
                 cell.in_frontier = False
                 cell.is_path = False

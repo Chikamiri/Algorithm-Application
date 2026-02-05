@@ -27,6 +27,7 @@ class Renderer:
         
         pygame.font.init()
         self.font = pygame.font.SysFont('Consolas', 16)
+        self.font_bold = pygame.font.SysFont('Consolas', 16, bold=True)
         self.font_large = pygame.font.SysFont('Consolas', 24, bold=True)
 
         # Dynamic Metrics (Calculated per frame)
@@ -153,82 +154,58 @@ class Renderer:
         self.screen.blit(text, text_rect)
 
     def draw_info(self, algo_name, speed_info, grid_size, stats=None):
-        x_start = self.screen.get_width() - self.SIDEBAR_WIDTH + 20
-        y_start = 20
+        x_start = self.screen.get_width() - self.SIDEBAR_WIDTH + 15
+        y_start = 15
         
         # Title
         title = self.font_large.render("Maze Visualizer", True, self.COLOR_PATH)
         self.screen.blit(title, (x_start, y_start))
-        y_start += 50
+        y_start += 40
         
-        # --- Live Statistics Panel ---
-        # Draw a background box for stats to make it distinct
-        stats_h = 200 # Increased height for even more stats
-        stats_w = self.SIDEBAR_WIDTH - 40
+        # --- Live Statistics Panel (Two Column) ---
+        stats_h = 130 
+        stats_w = self.SIDEBAR_WIDTH - 30
         stats_rect = pygame.Rect(x_start, y_start, stats_w, stats_h)
         pygame.draw.rect(self.screen, (35, 39, 46), stats_rect, border_radius=8)
         pygame.draw.rect(self.screen, self.COLOR_FRONTIER, stats_rect, 2, border_radius=8)
         
-        # Stats Data
-        visited_txt = f"{stats['visited']}" if stats else "0"
-        total_txt = f"{stats['total']}" if stats else "0"
-        coverage_txt = f"{stats['coverage']:.1f}%" if stats else "0.0%"
-        frontier_txt = f"{stats['frontier']}" if stats else "0"
-        path_txt = f"{stats['path']}" if stats else "0"
-        time_txt = f"{stats['time']:.2f}s" if stats and 'time' in stats else "0.00s"
-        comp_txt = f"{stats['comp_time']:.2f}ms" if stats and 'comp_time' in stats else "0.00ms"
-        steps_txt = f"{stats['steps']}" if stats and 'steps' in stats else "0"
-        ram_txt = f"{stats['memory']:.1f} KB" if stats and 'memory' in stats else "0.0 KB"
-        
-        stat_lines = [
-            f"Visual Time:    {time_txt}",
-            f"Execution Time: {comp_txt}",
-            f"Total Steps:    {steps_txt}",
-            f"RAM Usage:      {ram_txt}",
-            f"Nodes Visited:  {visited_txt}",
-            f"Total Cells:    {total_txt}",
-            f"Coverage:       {coverage_txt}",
-            f"Frontier Size:  {frontier_txt}",
-            f"Path Length:    {path_txt}"
-        ]
-        
-        sy = y_start + 15 # Adjusted padding
-        for line in stat_lines:
-            t = self.font.render(line, True, self.COLOR_TEXT)
-            self.screen.blit(t, (x_start + 15, sy))
-            sy += 22
+        if stats:
+            # Pair stats for two-column layout
+            stat_pairs = [
+                (f"Time: {stats['time']:.1f}s", f"CPU: {stats['comp_time']:.0f}ms"),
+                (f"Steps: {stats['steps']}", f"RAM: {stats['memory']:.0f}K"),
+                (f"Visit: {stats['visited']}", f"Total: {stats['total']}"),
+                (f"Cover: {stats['coverage']:.1f}%", f"Front: {stats['frontier']}"),
+                (f"Path:  {stats['path']}", "")
+            ]
             
-        y_start += stats_h + 20 # Move below stats box
+            sy = y_start + 10
+            col2_off = stats_w // 2
+            for left, right in stat_pairs:
+                self.screen.blit(self.font.render(left, True, self.COLOR_TEXT), (x_start + 10, sy))
+                if right:
+                    self.screen.blit(self.font.render(right, True, self.COLOR_TEXT), (x_start + col2_off, sy))
+                sy += 20
+            
+        y_start += stats_h + 15
         
-        # --- Other Info Groups ---
+        # --- Grouped Info ---
         info_groups = [
-            ("Status", [
-                f"Algorithm: {algo_name}",
-                f"Grid Size: {grid_size[0]}x{grid_size[1]}",
+            ("Status & Config", [
+                f"Algo: {algo_name}",
+                f"Grid: {grid_size[0]}x{grid_size[1]}",
                 f"Speed: {speed_info}",
             ]),
             ("Controls", [
-                "SPACE: Pause / Resume",
-                "R: Reset Grid",
-                "B: Benchmark Mode",
-                "[ / ]: Speed +/- 1",
-                "Shift+[ / ]: Speed +/- 5",
-            ]),
-            ("Grid Sizing", [
-                "ARROWS: Resize (+/- 5)",
-                "F1: Small (15x15)",
-                "F2: Medium (30x40)",
-                "F3: Large (50x70)",
+                "SPACE: Pause | R: Reset",
+                "B: Bench | [ / ]: Speed",
+                "ARROWS: Resize Grid",
+                "F1-F3: Grid Presets",
             ]),
             ("Algorithms", [
-                "1: Rec. Backtracker",
-                "2: Prim's Algo",
-                "---",
-                "3: BFS (Shortest)",
-                "4: DFS",
-                "5: A* (Heuristic)",
-                "6: Dijkstra",
-                "7: Wall Follower",
+                "1: Backtracker | 2: Prim's",
+                "3: BFS | 4: DFS | 5: A*",
+                "6: Dijkstra | 7: Wall",
             ])
         ]
         
@@ -236,15 +213,34 @@ class Renderer:
             # Group Header
             head = self.font.render(group_title, True, self.COLOR_FRONTIER)
             self.screen.blit(head, (x_start, y_start))
-            y_start += 25
+            y_start += 22
             
             # Lines
             for line in lines:
-                text = self.font.render(line, True, self.COLOR_TEXT)
-                self.screen.blit(text, (x_start + 10, y_start))
-                y_start += 20
+                segments = line.split(" | ")
+                curr_x = x_start + 5
+                
+                for i, seg in enumerate(segments):
+                    if ":" in seg:
+                        # Bold the key (part before colon)
+                        key, val = seg.split(":", 1)
+                        k_surf = self.font_bold.render(key, True, self.COLOR_TEXT)
+                        v_surf = self.font.render(":" + val, True, self.COLOR_TEXT)
+                        self.screen.blit(k_surf, (curr_x, y_start))
+                        self.screen.blit(v_surf, (curr_x + k_surf.get_width(), y_start))
+                        curr_x += k_surf.get_width() + v_surf.get_width()
+                    else:
+                        t_surf = self.font.render(seg, True, self.COLOR_TEXT)
+                        self.screen.blit(t_surf, (curr_x, y_start))
+                        curr_x += t_surf.get_width()
+                    
+                    if i < len(segments) - 1:
+                        p_surf = self.font.render(" | ", True, self.COLOR_TEXT)
+                        self.screen.blit(p_surf, (curr_x, y_start))
+                        curr_x += p_surf.get_width()
+                y_start += 18
             
-            y_start += 15 # Group spacing
+            y_start += 10 # Group spacing
 
     def draw_benchmark_progress(self, progress, message, current_ram=0.0):
         self.screen.fill(self.COLOR_BG)
@@ -290,49 +286,44 @@ class Renderer:
         pygame.draw.line(self.screen, self.COLOR_WALL, (sidebar_rect.x, 0), (sidebar_rect.x, self.screen.get_height()), 2)
         
         # Instructions
-        info_x = self.screen.get_width() - self.SIDEBAR_WIDTH + 20
+        info_x = self.screen.get_width() - self.SIDEBAR_WIDTH + 15
         self.screen.blit(self.font_large.render("Benchmark Results", True, self.COLOR_PATH), (info_x, 20))
-        self.screen.blit(self.font.render("Press B to return", True, self.COLOR_TEXT), (info_x, 60))
-        self.screen.blit(self.font.render("Press ENTER to rerun", True, self.COLOR_TEXT), (info_x, 90))
         
-        # Iteration Control
-        iter_y = 130
-        self.screen.blit(self.font.render(f"Target Iterations: {iterations}", True, self.COLOR_FRONTIER), (info_x, iter_y))
-        self.screen.blit(self.font.render("(UP/DOWN +/- 1, SHIFT +/- 5)", True, (150, 150, 150)), (info_x, iter_y + 20))
+        ctrl_y = 60
+        ctrls = ["B: Back to Maze", "ENTER: Rerun All", f"Iter: {iterations} (UP/DN)"]
+        for msg in ctrls:
+            if ":" in msg:
+                parts = msg.split(":", 1)
+                key_surf = self.font_bold.render(parts[0], True, self.COLOR_TEXT)
+                val_surf = self.font.render(":" + parts[1], True, self.COLOR_TEXT)
+                self.screen.blit(key_surf, (info_x, ctrl_y))
+                self.screen.blit(val_surf, (info_x + key_surf.get_width(), ctrl_y))
+            else:
+                self.screen.blit(self.font.render(msg, True, self.COLOR_TEXT), (info_x, ctrl_y))
+            ctrl_y += 20
 
         if not stats:
-            # Draw "No Results" message in center
             area_w = self.screen.get_width() - self.SIDEBAR_WIDTH
-            msg = self.font_large.render("No results available. Press ENTER to start.", True, self.COLOR_TEXT)
+            msg = self.font_large.render("No results. Press ENTER.", True, self.COLOR_TEXT)
             msg_rect = msg.get_rect(center=(area_w // 2, self.screen.get_height() // 2))
             self.screen.blit(msg, msg_rect)
             return
 
         # Detailed Stats Table in Sidebar
-        ty = 180
+        ty = 140
         for name, data in stats.items():
-            head = self.font.render(f"--- {name} ---", True, self.COLOR_FRONTIER)
+            head = self.font.render(f"[{name}]", True, self.COLOR_FRONTIER)
             self.screen.blit(head, (info_x, ty))
-            ty += 22
-            
-            detail_lines = [
-                f"Time: {data['time_min']:.1f} - {data['time_max']:.1f} ms",
-                f"RAM: {data['memory_avg']:.1f} KB (Peak: {data['memory_max']:.1f})",
-                f"Efficiency: {data['efficiency']:.1f} nodes/ms",
-                f"Peak Frontier: {data['frontier_max']}",
-                f"Visited Range: {data['visited_min']} - {data['visited_max']}",
-            ]
-            for line in detail_lines:
-                txt = self.font.render(line, True, self.COLOR_TEXT)
-                self.screen.blit(txt, (info_x + 10, ty))
-                ty += 18
-            ty += 10
+            line = f"T:{data['time_avg']:.1f}ms | R:{data['memory_avg']:.0f}K"
+            self.screen.blit(self.font.render(line, True, self.COLOR_TEXT), (info_x + 5, ty + 18))
+            ty += 40
 
-        # Draw Charts
+        # Draw 4 Charts
         area_w = self.screen.get_width() - self.SIDEBAR_WIDTH
-        padding = 40
-        chart_w = (area_w - padding * 3) // 3
-        chart_h = self.screen.get_height() - 200
+        padding_x = 50 # Increased padding to avoid left-side overflow
+        padding_between = 40
+        chart_w = (area_w - padding_x - (padding_between * 4)) // 4
+        chart_h = self.screen.get_height() - 180
         y_start = 100
         
         algos = list(stats.keys())
@@ -344,21 +335,15 @@ class Renderer:
             self.COLOR_ENTRY
         ]
         
-        # 1. Time Chart
-        times = [stats[a]['time_avg'] for a in algos]
-        self.draw_bar_chart(padding, y_start, chart_w, chart_h, algos, times, "Avg Time (ms)", colors)
+        metrics = [
+            ([stats[a]['time_avg'] for a in algos], "Time (ms)"),
+            ([stats[a]['visited_avg'] for a in algos], "Visited"),
+            ([stats[a]['path_avg'] for a in algos], "Path Len"),
+            ([stats[a]['memory_avg'] for a in algos], "RAM (KB)")
+        ]
         
-        # 2. Visited Chart
-        visited = [stats[a]['visited_avg'] for a in algos]
-        self.draw_bar_chart(padding * 2 + chart_w, y_start, chart_w, chart_h, algos, visited, "Avg Visited", colors)
-        
-        # 3. Path Len Chart
-        paths = [stats[a]['path_avg'] for a in algos]
-        self.draw_bar_chart(padding * 3 + chart_w * 2, y_start, chart_w, chart_h, algos, paths, "Avg Path", colors)
-
-        # 4. Memory Chart
-        mems = [stats[a]['memory_avg'] for a in algos]
-        self.draw_bar_chart(padding * 4 + chart_w * 3, y_start, chart_w, chart_h, algos, mems, "Avg RAM (KB)", colors)
+        for i, (values, label) in enumerate(metrics):
+            self.draw_bar_chart(padding_x + i*(chart_w + padding_between), y_start, chart_w, chart_h, algos, values, label, colors)
 
     def draw_bar_chart(self, x, y, w, h, labels, values, title, colors):
         # Title
